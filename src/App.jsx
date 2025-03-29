@@ -1,34 +1,70 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { Container, Spinner, Tab, Tabs } from 'react-bootstrap'
+import 'bootstrap/dist/css/bootstrap.min.css'
 import './App.css'
+import QueryInput from './components/QueryInput'
+import QueryResult from './components/QueryResult'
+import Explanation from './components/Explanation'
+import Validation from './components/Validation'
+import { translateQuery, explainQuery, validateQuery } from './components/api'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(null)
+  const [explanation, setExplanation] = useState(null)
+  const [validation, setValidation] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('results')
+
+  const handleSubmit = async (queryText) => {
+    setLoading(true)
+    setQuery(queryText)
+    
+    try {
+      const translation = await translateQuery(queryText)
+      setResults(translation)
+      
+      const explanation = await explainQuery(queryText)
+      setExplanation(explanation)
+      
+      const validation = await validateQuery(queryText)
+      setValidation(validation)
+      
+      setActiveTab('results')
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <Container className="py-4">
+      <h1 className="text-center mb-4">NL2SQL Translator</h1>
+      <QueryInput onSubmit={handleSubmit} loading={loading} />
+      
+      {loading && (
+        <div className="text-center my-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </div>
+      )}
+      
+      {results && (
+        <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
+          <Tab eventKey="results" title="Results">
+            <QueryResult query={results.query} sql={results.sql} confidence={results.confidence} />
+          </Tab>
+          <Tab eventKey="explanation" title="Explanation">
+            <Explanation explanation={explanation} />
+          </Tab>
+          <Tab eventKey="validation" title="Validation">
+            <Validation validation={validation} />
+          </Tab>
+        </Tabs>
+      )}
+    </Container>
   )
 }
 
